@@ -111,7 +111,7 @@ namespace logrotate
 
             // if we get here, we didn't find it, so we need to force a rotate.  returns back a very old date
             Logging.Log(Strings.NoStatusDate + " " + m_log_path, Logging.LogType.Verbose);
-            return new DateTime(1970, 1, 1);
+            return DateTime.Today;
         }
     }
 }
