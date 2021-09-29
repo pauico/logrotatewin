@@ -190,3 +190,6 @@ ModelManifest.xml
 /logrotateconf/
 /logrotategui/
 /.vs
+
+#VSCode files
+/.VSCode
