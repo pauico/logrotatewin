@@ -464,6 +464,15 @@ namespace logrotate {
                 return ResourceManager.GetString("RotateSimulated", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Will rotate since log file is greater than maximum file size
+        /// </summary>
+        internal static string RotateWhenMaximumFileSize {
+            get {
+                return ResourceManager.GetString("RotateWhenMaximumFileSize", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Rotating file.
