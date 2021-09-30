@@ -358,7 +358,7 @@ namespace logrotate {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No date found in status file for path.
+        ///   Looks up a localized string similar to Will not rotate since log file timestamp did not meet check policy or it was already rotated..
         /// </summary>
         internal static string NoRotateNotGTTimeStamp {
             get {
@@ -367,7 +367,7 @@ namespace logrotate {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No last rotation date found for that file on status log. Forcing file rotation..
+        ///   Looks up a localized string similar to No date found in status file for path.
         /// </summary>
         internal static string NoStatusDate {
             get {
@@ -464,9 +464,9 @@ namespace logrotate {
                 return ResourceManager.GetString("RotateSimulated", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to Will rotate since log file is greater than maximum file size
+        ///   Looks up a localized string similar to Will rotate since log file is greater than maximum file size.
         /// </summary>
         internal static string RotateWhenMaximumFileSize {
             get {
