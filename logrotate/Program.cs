@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 using System.IO;
+using System.IO.Compression;
 using System.Diagnostics;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
@@ -965,22 +966,26 @@ namespace logrotate
             {
                 try
                 {
-                    using (FileStream fs = new FileStream(m_filepath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (var zfile = ZipFile.Open(compressed_file_path, ZipArchiveMode.Create))
                     {
-                        using (System.IO.Compression.GZipStream zs = new System.IO.Compression.GZipStream(new FileStream(compressed_file_path, FileMode.Create), System.IO.Compression.CompressionMode.Compress))
-                        {
-                            byte[] buffer = new byte[chunkSize];
-                            while (true)
-                            {
-                                int bytesRead = fs.Read(buffer, 0, chunkSize);
-                                if (bytesRead == 0)
-                                    break;
-                                zs.Write(buffer, 0, bytesRead);
-                            }
-                        }
+                        zfile.CreateEntryFromFile(m_filepath, Path.GetFileName(m_filepath));
                     }
+                        /*using (FileStream fs = new FileStream(m_filepath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            using (System.IO.Compression.GZipStream zs = new System.IO.Compression.GZipStream(new FileStream(compressed_file_path, FileMode.Create), System.IO.Compression.CompressionMode.Compress))
+                            {
+                                byte[] buffer = new byte[chunkSize];
+                                while (true)
+                                {
+                                    int bytesRead = fs.Read(buffer, 0, chunkSize);
+                                    if (bytesRead == 0)
+                                        break;
+                                    zs.Write(buffer, 0, bytesRead);
+                                }
+                            }
+                        }*/
 
-                    DeleteRotateFile(m_filepath, lrc);
+                        DeleteRotateFile(m_filepath, lrc);
                 }
                 catch (Exception e)
                 {
