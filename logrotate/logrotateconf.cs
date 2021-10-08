@@ -24,7 +24,7 @@ namespace logrotate
     class logrotateconf
     {
         #region Private consts
-        private const string sgzipdefaultcompressext = "gz";
+        private const string szipdefaultcompressext = "zip";
         #endregion
 
         #region Private variables
@@ -380,7 +380,7 @@ namespace logrotate
                     bgzipcompress = true;
                     if (string.IsNullOrEmpty(scompressext))
                     {
-                        scompressext = sgzipdefaultcompressext;
+                        scompressext = szipdefaultcompressext;
                     }
                     PrintDebug(split[0], bgzipcompress.ToString(), bDebug);
                     break;
