@@ -112,6 +112,7 @@ namespace logrotate
 
                     Logging.Log(Strings.Processing + " " + Strings.Key + " " + kvp.Key, Logging.LogType.Verbose);
                     List<FileInfo> m_rotatefis = new List<FileInfo>();
+                    List<string> m_dirs = new List<string>();
 
                     try
                     {
@@ -148,7 +149,7 @@ namespace logrotate
                                 // assume there is a wildcard character in the path, so now we need to parse the directory string and go through each folder
                                 // if there is a wildcard in the subfolder name, then get all the files as specified (note there may be a wildcard for the filename too)
                                 string filename = Path.GetFileName(kvp.Key);
-                                List<string> dirs = new List<string>();
+                                //List<string> dirs = new List<string>();
                                 string[] parsed = Path.GetDirectoryName(kvp.Key).Split(Path.DirectorySeparatorChar);
                                 string tmp = "";
                                 bool bFoundWildcard = false;
@@ -166,7 +167,7 @@ namespace logrotate
                                         foreach (string new_dir in new_dirs)
                                         {
                                             Logging.Log(Strings.MatchedFolder + " '" + new_dir + "'", Logging.LogType.Verbose);
-                                            dirs.Add(new_dir);
+                                            m_dirs.Add(new_dir);
                                         }
 
                                     }
@@ -181,10 +182,10 @@ namespace logrotate
                                 }
                                 if (bFoundWildcard == false)
                                 {
-                                    dirs.Add(tmp);
+                                    m_dirs.Add(tmp);
                                 }
 
-                                foreach (string search_dir in dirs)
+                                foreach (string search_dir in m_dirs)
                                 {
                                     // assume this is a wildcard, so attempt to use it
                                     DirectoryInfo di = new DirectoryInfo(search_dir);
@@ -211,6 +212,15 @@ namespace logrotate
                         {
                             RotateFile(kvp.Value, r_fi);
                         }
+
+                        // after rotation, age out old files
+                        foreach (string dir in m_dirs)
+                        {
+                            string rotate_path = GetRotatePath(kvp.Value, dir);
+                            string pattern = Path.GetFileName(kvp.Key);
+                            AgeOutRotatedFiles(kvp.Value, pattern, rotate_path);
+                        }
+                        
 
                         // if sharedscripts enabled, then run postrotate if this is the last file
                         if ((kvp.Value.PostRotate != null) && (kvp.Value.SharedScripts == true))
@@ -656,6 +666,32 @@ namespace logrotate
         }
 
         /// <summary>
+        /// Returns the path that the rotated log should go, depends on the olddir directive
+        /// </summary>
+        /// <param name="lrc">logrotateconf object</param>
+        /// <param name="dir">the rotated log fileinfo object</param>
+        /// <returns>String containing path for the rotated log file</returns>
+        private static string GetRotatePath(logrotateconf lrc, string dir)
+        {
+            // determine path to put the rotated log file
+            string rotate_path;
+            if (lrc.OldDir != "")
+            {
+                if (!Directory.Exists(lrc.OldDir))
+                {
+                    Directory.CreateDirectory(lrc.OldDir);
+                }
+
+                rotate_path = lrc.OldDir + "\\";
+            }
+            else
+            {
+                rotate_path = dir + "\\";
+            }
+            return rotate_path;
+        }
+
+        /// <summary>
         /// Determines the name of the rotated log file
         /// </summary>
         /// <param name="lrc">logrotateconf object</param>
@@ -688,17 +724,17 @@ namespace logrotate
         /// <param name="lrc">logrotateconf object</param>
         /// <param name="fi">FileInfo object for the log file</param>
         /// <param name="rotate_path">the folder rotated logs are located in</param>
-        private static void AgeOutRotatedFiles(logrotateconf lrc, FileInfo fi, string rotate_path)
+        private static void AgeOutRotatedFiles(logrotateconf lrc, string pattern, string rotate_path)
         {
             DirectoryInfo di = new DirectoryInfo(rotate_path);
-            FileInfo[] fis = di.GetFiles(fi.Name + "*");
+            FileInfo[] fis = di.GetFiles(pattern + "*");
             if (fis.Length == 0)
             {
                 // nothing to do
                 return;
             }
             // look for any rotated log files, and rename them with the count if not using dateext
-            Regex pattern = new Regex("[0-9]");
+            Regex repattern = new Regex("[0-9]");
 
             // sort alphabetically reversed
             Array.Sort<FileSystemInfo>(fis, delegate (FileSystemInfo a, FileSystemInfo b)
@@ -706,11 +742,11 @@ namespace logrotate
                 return new CaseInsensitiveComparer().Compare(b.Name, a.Name);
             });
             // if original file is in this list, remove it
-            if (fis[fis.Length - 1].Name == fi.Name)
+            /*if (fis[fis.Length - 1].Name == fi.Name)
             {
                 // this is the original file, remove from this list
                 Array.Resize<FileInfo>(ref fis, fis.Length - 1);
-            }
+            }*/
             // go ahead and remove files that are too old by age
             foreach (FileInfo m_fi in fis)
             {
@@ -720,7 +756,7 @@ namespace logrotate
                     if (m_fi.LastWriteTime < DateTime.Now.Subtract(new TimeSpan(lrc.MaxAge, 0, 0, 0)))
                     {
                         Logging.Log(m_fi.FullName + " is too old - " + Strings.DeletingFile, Logging.LogType.Verbose);
-                        RemoveOldRotateFile(fi.FullName, lrc, m_fi);
+                        RemoveOldRotateFile(m_fi.FullName, lrc, m_fi);
                         continue;
                     }
                 }
@@ -731,7 +767,7 @@ namespace logrotate
                 for (int rotation_counter = lrc.Rotate - 1; rotation_counter < fis.Length; rotation_counter++)
                 {
                     // remove any entries that are past the rotation limit
-                    RemoveOldRotateFile(fi.FullName, lrc, fis[rotation_counter]);
+                    RemoveOldRotateFile(fis[rotation_counter].FullName, lrc, fis[rotation_counter]);
                 }
             }
             else
@@ -745,7 +781,7 @@ namespace logrotate
                     int i;
                     for (i = exts.Length - 1; i > 0; i--)
                     {
-                        if (pattern.IsMatch(exts[i]))
+                        if (repattern.IsMatch(exts[i]))
                         {
                             break;
                         }
@@ -753,7 +789,7 @@ namespace logrotate
                     if (Convert.ToInt32(exts[i]) >= lrc.Rotate)
                     {
                         // too old!
-                        RemoveOldRotateFile(fi.FullName, lrc, m_fi);
+                        RemoveOldRotateFile(m_fi.FullName, lrc, m_fi);
                     }
                     else
                     {
@@ -817,8 +853,8 @@ namespace logrotate
             // determine path to put the rotated log file
             string rotate_path = GetRotatePath(lrc, fi);
 
-            // age out old logs
-            AgeOutRotatedFiles(lrc, fi, rotate_path);
+            // age out old logs - now handled in main
+            //AgeOutRotatedFiles(lrc, fi, rotate_path);
 
             // determine name of rotated log file
             string rotate_name = GetRotateName(lrc, fi);
@@ -951,7 +987,7 @@ namespace logrotate
         /// <param name="lrc">logrotateconf object</param>
         private static void CompressRotatedFile(string m_filepath, logrotateconf lrc)
         {
-            int chunkSize = 65536;
+            //int chunkSize = 65536;
             FileInfo fi = new FileInfo(m_filepath);
 
             if (fi.Extension == "." + lrc.CompressExt)
